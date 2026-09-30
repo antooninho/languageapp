@@ -107,6 +107,17 @@ h2 { font-size: 1.3rem; margin: 0; }
   display: flex; flex-direction: column; gap: 8px; align-items: flex-start;
 }
 .spacer { flex: 1; }
+.status-banner {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--warn-bg);
+  color: var(--warn-text);
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-align: center;
+  padding: calc(10px + env(safe-area-inset-top)) 16px 10px;
+}
 
 /* Accueil */
 .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 0; background: none; border: 0; }

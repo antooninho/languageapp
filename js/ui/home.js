@@ -10,7 +10,7 @@ function stat(value, label) {
     h('div', { class: 'stat-label' }, label));
 }
 
-function banners(ctx, today) {
+function banners(ctx) {
   const { storage } = ctx;
   const list = [];
   if (ctx.baseLoadFailed) {
@@ -20,11 +20,6 @@ function banners(ctx, today) {
     list.push(h('div', { class: 'banner' },
       'Certaines données étaient illisibles. Importe une sauvegarde depuis les Réglages.',
       h('button', { class: 'link', onclick: () => ctx.navigate('settings') }, 'Ouvrir les réglages')));
-  }
-  if (storage.needsBackupReminder(today)) {
-    list.push(h('div', { class: 'banner' },
-      'Pense à exporter une sauvegarde de ta progression.',
-      h('button', { class: 'link', onclick: () => ctx.navigate('settings') }, 'Exporter')));
   }
   if (!ctx.speech.hasRussianVoice() && !storage.getMeta().voiceHelpShown) {
     const banner = h('div', { class: 'banner' },
@@ -55,7 +50,7 @@ export function renderHome(root, ctx) {
     h('header', {},
       h('h1', {}, 'Russe'),
       h('p', { class: 'subtitle' }, 'Révisions du jour')),
-    banners(ctx, today),
+    banners(ctx),
     h('div', { class: 'stats' },
       stat(due, `${plural(due, 'mot', 'mots')} à réviser`),
       stat(newAvailable, `${plural(newAvailable, 'nouveau disponible', 'nouveaux disponibles')}`)),
