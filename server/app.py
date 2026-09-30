@@ -48,12 +48,15 @@ async def read_json(request: Request):
     length = request.headers.get("content-length")
     if length and length.isdigit() and int(length) > MAX_BODY:
         raise ApiError(413, "too_large")
-    body = await request.body()
-    if len(body) > MAX_BODY:
-        raise ApiError(413, "too_large")
+    # Lecture par morceaux : un corps envoyé sans Content-Length est coupé dès qu'il dépasse la limite.
+    body = bytearray()
+    async for chunk in request.stream():
+        body += chunk
+        if len(body) > MAX_BODY:
+            raise ApiError(413, "too_large")
     try:
         return json.loads(body)
-    except ValueError:
+    except (ValueError, RecursionError):
         raise ApiError(400, "bad_request")
 
 
@@ -104,10 +107,12 @@ def create_app(db_path: str, dev: bool = False, trust_proxy: bool = False, now=t
     @app.post("/api/login")
     async def login(request: Request, response: Response, conn=Depends(get_conn)):
         ip = client_ip(request, trust_proxy)
+        data = await read_json(request)
+        # Plus aucun `await` à partir d'ici : la vérification du blocage, celle du mot de passe et le
+        # comptage de l'échec s'enchaînent sans qu'une autre requête puisse s'intercaler.
         wait = limiter.retry_after(ip)
         if wait:
             raise ApiError(429, "too_many_attempts", retryAfter=wait)
-        data = await read_json(request)
         raw_name = data.get("username") if isinstance(data, dict) else None
         password = data.get("password") if isinstance(data, dict) else None
         name = normalize_username(raw_name) if isinstance(raw_name, str) else None

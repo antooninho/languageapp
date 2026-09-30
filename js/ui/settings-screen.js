@@ -27,6 +27,7 @@ export function renderSettings(root, ctx) {
   const { storage } = ctx;
   const settings = storage.getSettings();
   const message = h('p', { hidden: true });
+  const logoutMessage = h('p', { class: 'error', hidden: true });
   const showMessage = (text, kind) => {
     message.className = kind;
     message.textContent = text;
@@ -96,7 +97,17 @@ export function renderSettings(root, ctx) {
       h('h2', {}, 'Réglages')),
     h('div', { class: 'card', style: 'display:flex;flex-direction:column;gap:12px' },
       h('p', { class: 'muted' }, `Connecté en tant que ${ctx.username}`),
-      h('button', { class: 'btn', onclick: () => ctx.logout() }, 'Se déconnecter')),
+      h('button', {
+        class: 'btn',
+        onclick: async () => {
+          const result = await ctx.logout();
+          if (result && !result.ok) {
+            logoutMessage.textContent = result.message;
+            logoutMessage.hidden = false;
+          }
+        },
+      }, 'Se déconnecter'),
+      logoutMessage),
     h('div', { class: 'card', style: 'display:flex;flex-direction:column;gap:16px' },
       h('label', {}, 'Nouveaux mots par jour', newPerDay),
       h('label', { class: 'check' }, 'Lecture audio automatique', autoAudio)),

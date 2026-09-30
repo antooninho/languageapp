@@ -1,2 +1,3 @@
-fastapi
-uvicorn
+# Versions figées : une mise à jour (update.sh) ne doit pas installer une version incompatible.
+fastapi==0.142.2
+uvicorn==0.54.0

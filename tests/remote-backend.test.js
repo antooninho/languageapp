@@ -108,6 +108,95 @@ test('conflit : valeur du serveur reprise, « conflict » signalé', async () =>
   assert.equal(backend.getItem('ru-app:settings'), '{"newPerDay":7}');
   assert.equal(backend.pendingCount(), 0);
 });
+test('réponse perdue puis nouvel essai : pas de faux conflit, la réponse suivante part', async () => {
+  const { api, events, timers, backend } = setup();
+  backend.setItem('ru-app:progress', '{"a":1}');
+  await tick();
+  api.calls[0].reject(new TypeError('Failed to fetch'));   // enregistré sur le serveur, réponse perdue
+  await backend.idle();
+  backend.setItem('ru-app:progress', '{"a":1,"b":1}');
+  timers[0].fn();
+  await tick();
+  assert.deepEqual([api.calls[1].value, api.calls[1].version], [{ a: 1, b: 1 }, null]);
+  api.calls[1].resolve({ status: 409, body: { error: 'conflict', current: { value: { a: 1 }, version: 1 } } });
+  await tick(); await tick();
+  assert.deepEqual([api.calls[2].value, api.calls[2].version], [{ a: 1, b: 1 }, 1]);
+  api.calls[2].resolve({ status: 200, body: { version: 2 } });
+  await backend.idle();
+  assert.deepEqual(events, ['offline', 'saved']);
+  assert.equal(backend.getItem('ru-app:progress'), '{"a":1,"b":1}');
+});
+test('réponse perdue, même valeur renvoyée : considérée comme enregistrée', async () => {
+  const { api, events, timers, backend } = setup();
+  backend.setItem('ru-app:settings', '{"n":1}');
+  await tick();
+  api.calls[0].reject(new TypeError('Failed to fetch'));
+  await backend.idle();
+  timers[0].fn();
+  await tick();
+  api.calls[1].resolve({ status: 409, body: { error: 'conflict', current: { value: { n: 1 }, version: 1 } } });
+  await backend.idle();
+  assert.equal(api.calls.length, 2);
+  assert.deepEqual(events, ['offline', 'saved']);
+  assert.equal(backend.pendingCount(), 0);
+});
+test('réponse 200 inattendue (sans version) : traitée comme une coupure, sans boucle', async () => {
+  const { api, events, timers, backend } = setup();
+  backend.setItem('ru-app:meta', '{}');
+  await tick();
+  api.calls[0].resolve({ status: 200, body: null });   // par exemple un portail Wi-Fi qui répond en HTML
+  await backend.idle();
+  await tick();
+  assert.equal(api.calls.length, 1);
+  assert.deepEqual(events, ['offline']);
+  assert.equal(timers.length, 1);
+});
+test('conflit sur une clé : les autres clés en attente partent quand même', async () => {
+  const { api, events, backend } = setup({ settings: { value: {}, version: 1 } });
+  backend.setItem('ru-app:settings', '{"n":1}');
+  backend.setItem('ru-app:meta', '{"m":1}');
+  await tick();
+  api.calls[0].resolve({ status: 409, body: { error: 'conflict', current: { value: { n: 9 }, version: 2 } } });
+  await tick(); await tick();
+  assert.equal(api.calls[1].key, 'meta');
+  api.calls[1].resolve({ status: 200, body: { version: 1 } });
+  await backend.idle();
+  assert.deepEqual(events, ['conflict', 'saved']);
+});
+test('close() : plus aucun envoi, minuteur ni rappel', async () => {
+  const { api, events, timers, backend } = setup();
+  backend.setItem('ru-app:progress', '{"a":1}');
+  await tick();
+  api.calls[0].reject(new TypeError('Failed to fetch'));
+  await backend.idle();
+  backend.close();
+  timers[0].fn();
+  backend.setItem('ru-app:progress', '{"a":2}');
+  await tick();
+  assert.equal(api.calls.length, 1);
+  assert.deepEqual(events, ['offline']);
+});
+test('close() pendant un envoi : la réponse est ignorée', async () => {
+  const { api, events, backend } = setup();
+  backend.setItem('ru-app:settings', '{"n":1}');
+  await tick();
+  backend.close();
+  api.calls[0].resolve({ status: 409, body: { error: 'conflict', current: { value: { n: 0 }, version: 3 } } });
+  await backend.idle();
+  assert.deepEqual(events, []);
+});
+test('versions() et isIdle()', async () => {
+  const { api, backend } = setup({ progress: { value: {}, version: 4 } });
+  assert.deepEqual(backend.versions(), { progress: 4 });
+  assert.equal(backend.isIdle(), true);
+  backend.setItem('ru-app:progress', '{"a":1}');
+  assert.equal(backend.isIdle(), false);
+  await tick();
+  api.calls[0].resolve({ status: 200, body: { version: 5 } });
+  await backend.idle();
+  assert.equal(backend.isIdle(), true);
+  assert.deepEqual(backend.versions(), { progress: 5 });
+});
 test('clés non synchronisées et removeItem restent locales', async () => {
   const { api, backend } = setup();
   backend.setItem('ru-app:corrupt-progress-1', 'x');

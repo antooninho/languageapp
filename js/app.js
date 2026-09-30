@@ -20,6 +20,10 @@ const screens = {
   settings: renderSettings,
 };
 
+// Au retour dans l'appli après cette durée, on vérifie si un autre appareil a changé les données.
+const RESUME_CHECK_MS = 60 * 1000;
+const CHANGED_ELSEWHERE = 'Données mises à jour depuis un autre appareil.';
+
 function renderPending(root, ctx) {
   root.append(h('section', { class: 'screen' },
     h('p', {}, 'Bientôt disponible'),
@@ -47,6 +51,11 @@ async function loadBaseWords() {
   }
 }
 
+function versionsDiffer(items, known) {
+  const keys = new Set([...Object.keys(items), ...Object.keys(known)]);
+  return [...keys].some(key => items[key]?.version !== known[key]);
+}
+
 async function start() {
   const root = document.getElementById('app');
   const statusBanner = document.getElementById('status-banner');
@@ -55,6 +64,9 @@ async function start() {
 
   let current = { name: null, day: null };
   let backend = null;
+  let entering = null;
+  let refreshing = false;
+  let hiddenAt = null;
   let noticeTimer = null;
 
   const setBanner = text => {
@@ -85,17 +97,27 @@ async function start() {
         renderError(root, ctx, name, error);
       }
     },
+    // Renvoie { ok: true } ou { ok: false, message } (affiché dans les réglages).
     async logout() {
-      try {
-        await api.logout();
-      } catch {
-        // hors connexion : on affiche quand même la page de connexion
+      if (backend) {
+        await backend.idle();
+        if (backend.pendingCount() > 0) {
+          return { ok: false, message: "Tes dernières réponses ne sont pas encore enregistrées. Attends d'avoir du réseau avant de te déconnecter." };
+        }
       }
+      try {
+        const response = await api.logout();
+        if (response.status !== 204) throw new Error(`HTTP ${response.status}`);
+      } catch {
+        return { ok: false, message: 'Impossible de joindre le serveur pour te déconnecter. Réessaie.' };
+      }
+      backend?.close();
       backend = null;
       ctx.storage = null;
       ctx.username = null;
       setBanner(null);
       showLogin();
+      return { ok: true };
     },
   };
 
@@ -108,6 +130,12 @@ async function start() {
       h('p', { class: 'muted' }, 'Vérifie ta connexion internet, puis réessaie.'),
       h('div', { class: 'spacer' }),
       h('button', { class: 'btn btn-primary btn-big', onclick: boot }, 'Réessayer')));
+  }
+
+  function showSyncing() {
+    current = { name: 'syncing', day: null };
+    clear(root);
+    root.append(h('section', { class: 'screen' }, h('p', { class: 'muted' }, 'Mise à jour des données…')));
   }
 
   function showLogin(message) {
@@ -128,7 +156,13 @@ async function start() {
     });
   }
 
-  async function enter(username) {
+  // Une seule entrée à la fois, même si plusieurs événements la demandent en même temps.
+  function enter(username) {
+    entering ??= doEnter(username).finally(() => { entering = null; });
+    return entering;
+  }
+
+  async function doEnter(username) {
     let response;
     try {
       response = await api.loadData();
@@ -139,6 +173,7 @@ async function start() {
     if (response.status === 401) return showLogin();
     if (response.status !== 200) return showUnreachable();
 
+    backend?.close();
     ctx.username = username;
     backend = createRemoteBackend({
       items: response.body.items,
@@ -146,14 +181,25 @@ async function start() {
       onStatus: status => setBanner(status === 'offline'
         ? 'Connexion perdue — tes dernières réponses ne sont pas encore enregistrées.'
         : null),
-      onConflict: async () => {
-        await enter(username);
-        notice('Données mises à jour depuis un autre appareil.');
-      },
+      onConflict: () => refresh(CHANGED_ELSEWHERE),
       onUnauthorized: () => showLogin('Ta session a expiré, reconnecte-toi.'),
     });
     ctx.storage = createStorage(backend);
     ctx.navigate('home');
+  }
+
+  // Recharge toutes les données depuis le serveur (conflit, ou changements faits sur un autre appareil).
+  async function refresh(message) {
+    if (refreshing) return;
+    refreshing = true;
+    showSyncing(); // plus de réponse possible pendant la mise à jour
+    const old = backend;
+    await old?.idle(); // les autres modifications en attente partent d'abord
+    old?.close();
+    backend = null;
+    await enter(ctx.username);
+    refreshing = false;
+    if (message && backend) notice(message);
   }
 
   async function boot() {
@@ -169,11 +215,26 @@ async function start() {
     showUnreachable();
   }
 
-  // L'appli installée peut rester en veille pendant la nuit : on rafraîchit l'accueil au changement de jour.
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible' && current.name === 'home' && current.day !== todayISO()) {
-      ctx.navigate('home');
+  // L'appli installée reste souvent en veille : au retour, on vérifie les données et le jour.
+  document.addEventListener('visibilitychange', async () => {
+    if (document.visibilityState === 'hidden') {
+      hiddenAt = Date.now();
+      return;
     }
+    const awayLong = hiddenAt !== null && Date.now() - hiddenAt > RESUME_CHECK_MS;
+    hiddenAt = null;
+    if (awayLong && backend?.isIdle() && !refreshing) {
+      try {
+        const response = await api.loadData();
+        if (response.status === 200 && versionsDiffer(response.body.items, backend.versions())) {
+          refresh(CHANGED_ELSEWHERE);
+          return;
+        }
+      } catch {
+        // hors connexion : on garde les données en mémoire
+      }
+    }
+    if (current.name === 'home' && current.day !== todayISO()) ctx.navigate('home');
   });
 
   boot();

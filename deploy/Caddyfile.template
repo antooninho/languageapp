@@ -10,6 +10,10 @@ https://__IP__ {
 	encode gzip
 
 	handle /api/* {
+		# Même limite que le serveur Python : un envoi trop gros est coupé ici.
+		request_body {
+			max_size 2MB
+		}
 		reverse_proxy 127.0.0.1:8000
 	}
 

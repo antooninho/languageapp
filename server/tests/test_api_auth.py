@@ -1,4 +1,33 @@
+import asyncio
+
+import httpx
+
+from server.app import create_app
 from server.tests.conftest import login
+
+
+def test_login_burst_cannot_bypass_rate_limit(db_path, clock):
+    """10 connexions ouvertes d'un coup, corps envoyés ensemble : au plus 5 essais vérifiés."""
+    app = create_app(db_path, now=clock)
+
+    async def scenario():
+        gate = asyncio.Event()
+
+        async def body():
+            await gate.wait()
+            yield b'{"username": "antonin", "password": "mauvais"}'
+
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="https://testserver") as c:
+            tasks = [asyncio.create_task(c.post("/api/login", content=body(),
+                                                headers={"Content-Type": "application/json"}))
+                     for _ in range(10)]
+            await asyncio.sleep(0.1)  # toutes les requêtes sont arrivées et attendent leur corps
+            gate.set()
+            return [(await t).status_code for t in tasks]
+
+    statuses = asyncio.run(scenario())
+    assert statuses.count(401) <= 5
+    assert statuses.count(429) >= 5
 
 def test_login_sets_secure_cookie(client):
     r = login(client)

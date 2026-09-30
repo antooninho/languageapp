@@ -121,7 +121,7 @@ Recharge ensuite la page sur ton téléphone.
 
 ## 4. Sauvegardes
 
-Chaque nuit à 3 h, une copie de la base est faite dans `/var/lib/languageapp/backups/`. Les 14 dernières sont gardées (`data-AAAA-MM-JJ.db`).
+Chaque nuit à 3 h (heure du serveur, en temps universel : 4 h ou 5 h à Paris), une copie de la base est faite dans `/var/lib/languageapp/backups/`. Les 14 dernières sont gardées (`data-AAAA-MM-JJ.db`).
 
 **Voir les sauvegardes :**
 

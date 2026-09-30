@@ -10,6 +10,8 @@ MIN_CADDY=2.11.4
 
 step() { echo; echo "==> $*"; }
 fail() { echo "Erreur : $*" >&2; exit 1; }
+# Sur un VM qui vient de démarrer, les mises à jour automatiques tiennent le verrou d'apt : on attend.
+apt_get() { apt-get -o DPkg::Lock::Timeout=300 "$@"; }
 
 IP=""
 YES=0
@@ -40,8 +42,31 @@ step "Paquets système"
 export DEBIAN_FRONTEND=noninteractive
 echo "iptables-persistent iptables-persistent/autosave_v4 boolean true" | debconf-set-selections
 echo "iptables-persistent iptables-persistent/autosave_v6 boolean true" | debconf-set-selections
-apt-get update -q
-apt-get install -y -q python3-venv curl debian-keyring debian-archive-keyring apt-transport-https gnupg iptables-persistent
+apt_get update -q
+apt_get install -y -q python3-venv curl debian-keyring debian-archive-keyring apt-transport-https gnupg iptables-persistent
+
+# Avant Caddy : Let's Encrypt doit pouvoir joindre le port 80 dès la première demande de certificat.
+step "Pare-feu du VM (ports 80 et 443)"
+open_port() {
+  local port=$1 line
+  if iptables -C INPUT -p tcp --dport "$port" -j ACCEPT 2>/dev/null; then
+    return
+  fi
+  # Les images Oracle finissent la chaîne INPUT par un REJECT : la règle doit passer avant.
+  line=$(iptables -L INPUT --line-numbers -n | awk '$2 == "REJECT" {print $1; exit}')
+  if [[ -n "$line" ]]; then
+    iptables -I INPUT "$line" -p tcp --dport "$port" -j ACCEPT
+  else
+    iptables -A INPUT -p tcp --dport "$port" -j ACCEPT
+  fi
+}
+open_port 80
+open_port 443
+netfilter-persistent save
+if command -v ufw >/dev/null && ufw status | grep -q "Status: active"; then
+  ufw allow 80/tcp
+  ufw allow 443/tcp
+fi
 
 caddy_ok() {
   command -v caddy >/dev/null || return 1
@@ -56,8 +81,8 @@ if ! caddy_ok; then
     | gpg --batch --yes --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
   curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' > /etc/apt/sources.list.d/caddy-stable.list
   chmod o+r /usr/share/keyrings/caddy-stable-archive-keyring.gpg /etc/apt/sources.list.d/caddy-stable.list
-  apt-get update -q
-  apt-get install -y -q caddy
+  apt_get update -q
+  apt_get install -y -q caddy
 fi
 caddy_ok || fail "Caddy $MIN_CADDY ou plus récent est nécessaire (installé : $(caddy version))."
 
@@ -81,28 +106,6 @@ sed "s/__IP__/$IP/" deploy/Caddyfile.template > /etc/caddy/Caddyfile
 caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 systemctl enable caddy
 systemctl reload caddy || systemctl restart caddy
-
-step "Pare-feu du VM (ports 80 et 443)"
-open_port() {
-  local port=$1 line
-  if iptables -C INPUT -p tcp --dport "$port" -j ACCEPT 2>/dev/null; then
-    return
-  fi
-  # Les images Oracle finissent la chaîne INPUT par un REJECT : la règle doit passer avant.
-  line=$(iptables -L INPUT --line-numbers -n | awk '$2 == "REJECT" {print $1; exit}')
-  if [[ -n "$line" ]]; then
-    iptables -I INPUT "$line" -p tcp --dport "$port" -j ACCEPT
-  else
-    iptables -A INPUT -p tcp --dport "$port" -j ACCEPT
-  fi
-}
-open_port 80
-open_port 443
-netfilter-persistent save
-if command -v ufw >/dev/null && ufw status | grep -q "Status: active"; then
-  ufw allow 80/tcp
-  ufw allow 443/tcp
-fi
 
 echo
 echo "C'est prêt : https://$IP"

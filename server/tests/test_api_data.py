@@ -1,4 +1,33 @@
+import asyncio
+
+import httpx
+
+from server.app import create_app
 from server.tests.conftest import login
+
+
+def test_oversized_chunked_body_is_cut_off(db_path, clock):
+    """Un corps envoyé par morceaux, sans Content-Length, n'est pas lu au-delà de la limite."""
+    app = create_app(db_path, now=clock)
+    pulled = []
+
+    async def chunks():
+        for _ in range(200):  # 200 × 64 Ko = 12,5 Mo
+            pulled.append(1)
+            yield b"x" * 65536
+
+    async def scenario():
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="https://testserver") as c:
+            return await c.post("/api/login", content=chunks(), headers={"Content-Type": "application/json"})
+
+    response = asyncio.run(scenario())
+    assert response.status_code == 413
+    assert len(pulled) <= 40
+
+
+def test_deeply_nested_json_is_rejected(client):
+    r = client.post("/api/login", content="[" * 100_000, headers={"Content-Type": "application/json"})
+    assert r.status_code == 400
 
 def put(client, key, value, version):
     return client.put(f"/api/data/{key}", json={"value": value, "version": version})
