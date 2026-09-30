@@ -1,0 +1,27 @@
+# Généré par deploy/install.sh et deploy/update.sh — ne pas modifier /etc/caddy/Caddyfile à la main.
+{
+	# Certificats Let's Encrypt de 6 jours : le seul profil qui accepte une adresse IP.
+	cert_issuer acme {
+		profile shortlived
+	}
+}
+
+https://__IP__ {
+	encode gzip
+
+	handle /api/* {
+		reverse_proxy 127.0.0.1:8000
+	}
+
+	# Seuls les fichiers de l'appli sont publics (pas le code du serveur, les scripts ni .git).
+	@public path / /index.html /manifest.webmanifest /css/* /js/* /data/* /icons/*
+	handle @public {
+		root * /opt/languageapp
+		header Cache-Control "no-cache"
+		file_server
+	}
+
+	handle {
+		respond 404
+	}
+}

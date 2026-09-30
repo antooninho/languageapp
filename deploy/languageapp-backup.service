@@ -1,0 +1,15 @@
+[Unit]
+Description=Sauvegarde de la base de l'appli de révision du russe
+
+[Service]
+Type=oneshot
+User=languageapp
+Group=languageapp
+WorkingDirectory=/opt/languageapp
+Environment=RU_APP_DB=/var/lib/languageapp/data.db
+ExecStart=/opt/languageapp/.venv/bin/python -m server.manage backup /var/lib/languageapp/backups
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/languageapp

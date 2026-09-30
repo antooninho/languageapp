@@ -1,0 +1,22 @@
+[Unit]
+Description=Appli de révision du russe (API)
+After=network.target
+
+[Service]
+Type=simple
+User=languageapp
+Group=languageapp
+WorkingDirectory=/opt/languageapp
+Environment=RU_APP_DB=/var/lib/languageapp/data.db
+Environment=RU_APP_TRUST_PROXY=1
+ExecStart=/opt/languageapp/.venv/bin/python -m server --host 127.0.0.1 --port 8000
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/languageapp
+
+[Install]
+WantedBy=multi-user.target

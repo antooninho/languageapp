@@ -1,0 +1,3 @@
+# Les scripts et fichiers de déploiement tournent sous Linux : fins de ligne Unix obligatoires.
+*.sh text eol=lf
+deploy/* text eol=lf
