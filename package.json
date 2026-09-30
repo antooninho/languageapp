@@ -1,0 +1,8 @@
+{
+  "name": "ru-app",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  }
+}
