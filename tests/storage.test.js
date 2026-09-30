@@ -75,12 +75,16 @@ test('meta locale aux champs mal typés : valeurs par défaut, pas de plantage',
   assert.equal(s.currentStreak('2026-09-30'), 0);
   assert.equal(s.introducedCount('2026-09-30'), 0);
   assert.equal(s.recordActivity('2026-09-30'), 1);
+  const b2 = fakeBackend();
+  b2.setItem('ru-app:meta', JSON.stringify({ practiceDays: [1, 2] }));
+  assert.deepEqual(createStorage(b2).getMeta().practiceDays, []);
 });
 test('import : meta aux champs mal typés refusée', () => {
   const s = createStorage(fakeBackend());
   const valid = JSON.parse(JSON.stringify(s.exportData(new Date(2026, 8, 30))));
   for (const meta of [{ lastExport: 5 }, { lastSessionDate: 20260930 }, { streak: '3' },
-                      { newIntroducedToday: 'x' }, { voiceHelpShown: 'oui' }, { newIntroducedDate: '30/09' }]) {
+                      { newIntroducedToday: 'x' }, { voiceHelpShown: 'oui' }, { newIntroducedDate: '30/09' },
+                      { practiceDays: '2026-09-30' }, { practiceDays: ['30/09'] }]) {
     assert.equal(s.importData({ ...valid, meta }).ok, false, JSON.stringify(meta));
   }
 });
@@ -117,4 +121,14 @@ test('données locales illisibles : mises de côté', () => {
   assert.deepEqual(s.corruptKeys, ['progress']);
   assert.ok([...backend._map.keys()].some(k => k.startsWith('ru-app:corrupt-progress-')));
   assert.equal(backend.getItem('ru-app:progress'), null);
+});
+test('jours révisés : retenus sans doublon, 14 au plus', () => {
+  const s = createStorage(fakeBackend());
+  s.recordActivity('2026-09-29'); s.recordActivity('2026-09-30'); s.recordActivity('2026-09-30');
+  assert.deepEqual(s.getMeta().practiceDays, ['2026-09-29', '2026-09-30']);
+  for (let d = 1; d <= 20; d++) s.recordActivity(`2026-10-${String(d).padStart(2, '0')}`);
+  const days = s.getMeta().practiceDays;
+  assert.equal(days.length, 14);
+  assert.equal(days[0], '2026-10-07');
+  assert.equal(days[13], '2026-10-20');
 });

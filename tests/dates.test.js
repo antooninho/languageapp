@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { todayISO, addDays, daysBetween } from '../js/dates.js';
+import { todayISO, addDays, daysBetween, weekDays } from '../js/dates.js';
 
 test('todayISO utilise la date locale', () => {
   assert.equal(todayISO(new Date(2026, 8, 30, 23, 59)), '2026-09-30');
@@ -17,4 +17,10 @@ test('daysBetween', () => {
   assert.equal(daysBetween('2026-09-30', '2026-10-07'), 7);
   assert.equal(daysBetween('2026-03-28', '2026-03-30'), 2);
   assert.equal(daysBetween('2026-10-07', '2026-09-30'), -7);
+});
+test('weekDays : du lundi au dimanche de la semaine du jour donné', () => {
+  assert.deepEqual(weekDays('2026-09-30'),
+    ['2026-09-28', '2026-09-29', '2026-09-30', '2026-10-01', '2026-10-02', '2026-10-03', '2026-10-04']);
+  assert.equal(weekDays('2026-10-04')[0], '2026-09-28'); // dimanche
+  assert.equal(weekDays('2026-09-28')[0], '2026-09-28'); // lundi
 });

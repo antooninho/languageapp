@@ -21,6 +21,21 @@ export function setStress(word, index) {
   return letters.join('');
 }
 
+// Le mot découpé en morceaux, les voyelles accentuées à part : [{ text, stressed }].
+// Sert à tracer l'accent soi-même (au stylo rouge) au lieu de laisser la police le placer.
+export function stressSegments(word) {
+  const segments = [];
+  const chars = [...word];
+  chars.forEach((ch, i) => {
+    if (ch === STRESS) return;
+    const stressed = chars[i + 1] === STRESS && VOWELS.includes(ch);
+    const last = segments[segments.length - 1];
+    if (last && !last.stressed && !stressed) last.text += ch;
+    else segments.push({ text: ch, stressed });
+  });
+  return segments;
+}
+
 export function stressedIndex(word) {
   return stressedIndexes(word)[0] ?? -1;
 }

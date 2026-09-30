@@ -7,7 +7,9 @@ const DEFAULT_SETTINGS = { newPerDay: 10, autoAudio: true };
 const DEFAULT_META = {
   lastExport: null, streak: 0, lastSessionDate: null,
   newIntroducedToday: 0, newIntroducedDate: null, voiceHelpShown: false,
+  practiceDays: [], // jours révisés récemment (14 au plus), pour la semaine affichée sur l'accueil
 };
+const PRACTICE_DAYS_KEPT = 14;
 
 export function createStorage(backend = globalThis.localStorage) {
   const corruptKeys = [];
@@ -138,7 +140,8 @@ export function createStorage(backend = globalThis.localStorage) {
       if (m.lastSessionDate === today) streak = m.streak;
       else if (m.lastSessionDate && addDays(m.lastSessionDate, 1) === today) streak = m.streak + 1;
       else streak = 1;
-      updateMeta({ streak, lastSessionDate: today });
+      const practiceDays = [...new Set([...m.practiceDays, today])].sort().slice(-PRACTICE_DAYS_KEPT);
+      updateMeta({ streak, lastSessionDate: today, practiceDays });
       return streak;
     },
 

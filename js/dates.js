@@ -19,6 +19,13 @@ export function addDays(iso, n) {
   return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
 }
 
+// Les 7 jours (lundi → dimanche) de la semaine qui contient `iso`.
+export function weekDays(iso) {
+  const dayOfWeek = new Date(toUTC(iso)).getUTCDay(); // 0 = dimanche
+  const monday = addDays(iso, -((dayOfWeek + 6) % 7));
+  return Array.from({ length: 7 }, (_, i) => addDays(monday, i));
+}
+
 export function daysBetween(a, b) {
   return Math.round((toUTC(b) - toUTC(a)) / DAY_MS);
 }

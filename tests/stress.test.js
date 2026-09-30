@@ -1,6 +1,17 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { stripStress, vowelIndexes, setStress, stressedIndex, stressedIndexes, toggleStress } from '../js/stress.js';
+import { stripStress, vowelIndexes, setStress, stressedIndex, stressedIndexes, toggleStress, stressSegments } from '../js/stress.js';
+
+test('stressSegments découpe le mot autour des voyelles accentuées', () => {
+  assert.deepEqual(stressSegments('молоко́'), [{ text: 'молок', stressed: false }, { text: 'о', stressed: true }]);
+  assert.deepEqual(stressSegments('до́брый ве́чер'), [
+    { text: 'д', stressed: false }, { text: 'о', stressed: true }, { text: 'брый в', stressed: false },
+    { text: 'е', stressed: true }, { text: 'чер', stressed: false }]);
+  assert.deepEqual(stressSegments('дом'), [{ text: 'дом', stressed: false }]);
+  assert.deepEqual(stressSegments('ёлка'), [{ text: 'ёлка', stressed: false }]);
+  assert.deepEqual(stressSegments('д́ом'), [{ text: 'дом', stressed: false }]); // accent après une consonne : ignoré
+  assert.deepEqual(stressSegments(''), []);
+});
 
 test('stressedIndexes', () => {
   assert.deepEqual(stressedIndexes('до́брый ве́чер'), [1, 8]);

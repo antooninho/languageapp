@@ -35,6 +35,7 @@ const META_FIELDS = {
   streak: isCount,
   newIntroducedToday: isCount,
   voiceHelpShown: v => typeof v === 'boolean',
+  practiceDays: v => Array.isArray(v) && v.length <= 60 && v.every(d => typeof d === 'string' && DATE_RE.test(d)),
 };
 
 export function isValidMeta(m) {
