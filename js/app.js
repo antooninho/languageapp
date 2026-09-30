@@ -7,12 +7,14 @@ import { renderHome } from './ui/home.js';
 import { renderSession } from './ui/session-screen.js';
 import { renderWords } from './ui/words-screen.js';
 import { renderWordForm } from './ui/word-form.js';
+import { renderSettings } from './ui/settings-screen.js';
 
 const screens = {
   home: renderHome,
   session: renderSession,
   words: renderWords,
   'word-form': renderWordForm,
+  settings: renderSettings,
 };
 
 function renderPending(root, ctx) {
