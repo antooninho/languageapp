@@ -13,6 +13,7 @@ const ASSETS = [
   './icons/icon-512.png',
   './js/answers.js',
   './js/api.js',
+  './js/remote-backend.js',
   './js/app.js',
   './js/dates.js',
   './js/session.js',
