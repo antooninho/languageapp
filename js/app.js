@@ -4,9 +4,11 @@ import { todayISO } from './dates.js';
 import * as speech from './speech.js';
 import { h, clear } from './ui/dom.js';
 import { renderHome } from './ui/home.js';
+import { renderSession } from './ui/session-screen.js';
 
 const screens = {
   home: renderHome,
+  session: renderSession,
 };
 
 function renderPending(root, ctx) {

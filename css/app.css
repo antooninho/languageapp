@@ -127,6 +127,8 @@ h2 { font-size: 1.3rem; margin: 0; }
 .kind { color: var(--muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; }
 .options { display: flex; flex-direction: column; gap: 10px; }
 .options .btn { text-align: left; font-weight: 500; }
+.options .btn:disabled { opacity: 1; }
+.options .btn:disabled:not(.correct):not(.wrong) { opacity: 0.5; }
 .btn.correct { background: var(--correct-bg); border-color: var(--correct); color: var(--correct); }
 .btn.wrong { background: var(--wrong-bg); border-color: var(--wrong); color: var(--wrong); }
 .grade-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
