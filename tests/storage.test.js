@@ -57,9 +57,32 @@ test('rappel de sauvegarde', () => {
   assert.equal(s.needsBackupReminder('2026-09-30'), false);
   s.recordActivity('2026-09-30');
   assert.equal(s.needsBackupReminder('2026-09-30'), true);
-  s.exportData(new Date(2026, 8, 30, 12));
+  s.markExported(new Date(2026, 8, 30, 12));
   assert.equal(s.needsBackupReminder('2026-10-07'), false);
   assert.equal(s.needsBackupReminder('2026-10-08'), true);
+});
+test('préparer un export ne compte pas comme sauvegarde (partage annulé)', () => {
+  const s = createStorage(fakeBackend());
+  s.recordActivity('2026-09-30');
+  s.exportData(new Date(2026, 8, 30, 12));
+  assert.equal(s.needsBackupReminder('2026-09-30'), true);
+});
+test('meta locale aux champs mal typés : valeurs par défaut, pas de plantage', () => {
+  const backend = fakeBackend();
+  backend.setItem('ru-app:meta', JSON.stringify({ lastExport: 5, lastSessionDate: 20260930, streak: '3', newIntroducedToday: 'x' }));
+  const s = createStorage(backend);
+  assert.equal(s.needsBackupReminder('2026-09-30'), false);
+  assert.equal(s.currentStreak('2026-09-30'), 0);
+  assert.equal(s.introducedCount('2026-09-30'), 0);
+  assert.equal(s.recordActivity('2026-09-30'), 1);
+});
+test('import : meta aux champs mal typés refusée', () => {
+  const s = createStorage(fakeBackend());
+  const valid = JSON.parse(JSON.stringify(s.exportData(new Date(2026, 8, 30))));
+  for (const meta of [{ lastExport: 5 }, { lastSessionDate: 20260930 }, { streak: '3' },
+                      { newIntroducedToday: 'x' }, { voiceHelpShown: 'oui' }, { newIntroducedDate: '30/09' }]) {
+    assert.equal(s.importData({ ...valid, meta }).ok, false, JSON.stringify(meta));
+  }
 });
 test('export puis import restaure les données', () => {
   const a = createStorage(fakeBackend());

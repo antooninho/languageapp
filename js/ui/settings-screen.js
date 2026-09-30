@@ -55,7 +55,10 @@ export function renderSettings(root, ctx) {
     const file = new File([JSON.stringify(data, null, 2)], `ru-app-sauvegarde-${todayISO()}.json`,
       { type: 'application/json' });
     try {
-      if (await shareOrDownload(file)) showMessage('Sauvegarde exportée.', 'ok');
+      if (await shareOrDownload(file)) {
+        storage.markExported();
+        showMessage('Sauvegarde exportée.', 'ok');
+      }
     } catch {
       showMessage("L'export a échoué.", 'error');
     }

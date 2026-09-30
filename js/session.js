@@ -26,9 +26,13 @@ function dueAndNew({ words, progress, today }) {
       const da = progress[a.id].due, db = progress[b.id].due;
       return da < db ? -1 : da > db ? 1 : byId(a, b);
     });
-  const fresh = words.filter(w => !progress[w.id] || progress[w.id].state === 'new').sort(byId);
+  const fresh = words.filter(w => !progress[w.id] || progress[w.id].state === 'new').sort(newWordOrder);
   return { due, fresh };
 }
+
+// Les mots ajoutés par l'utilisateur passent avant la liste de base (sinon ils attendraient des semaines).
+const isPerso = w => w.id.startsWith('perso-');
+const newWordOrder = (a, b) => (isPerso(a) !== isPerso(b) ? (isPerso(a) ? -1 : 1) : byId(a, b));
 
 const newQuota = (newPerDay, newIntroducedToday) => Math.max(0, newPerDay - newIntroducedToday);
 

@@ -45,20 +45,23 @@ self.addEventListener('fetch', event => {
   const { request } = event;
   if (request.method !== 'GET' || new URL(request.url).origin !== self.location.origin) return;
 
-  event.respondWith((async () => {
-    const cache = await caches.open(CACHE);
-    const cached = await cache.match(request, { ignoreSearch: true });
-    const network = fetch(request)
-      .then(response => {
-        if (response.ok) cache.put(request, response.clone());
-        return response;
-      })
-      .catch(() => null);
+  const cachePromise = caches.open(CACHE);
+  const network = fetch(request)
+    .then(async response => {
+      if (response.ok) {
+        const copy = response.clone();
+        await (await cachePromise).put(request, copy);
+      }
+      return response;
+    })
+    .catch(() => null);
+  // Appelé de façon synchrone dans le gestionnaire (exigé par certains navigateurs, dont Safari).
+  event.waitUntil(network);
 
-    if (cached) {
-      event.waitUntil(network);
-      return cached;
-    }
+  event.respondWith((async () => {
+    const cache = await cachePromise;
+    const cached = await cache.match(request, { ignoreSearch: true });
+    if (cached) return cached;
     const response = await network;
     if (response) return response;
     if (request.mode === 'navigate') {

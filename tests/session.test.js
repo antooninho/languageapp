@@ -58,6 +58,11 @@ test('buildSession : progression orpheline ignorée', () => {
   assert.deepEqual(buildSession(opts([], { 'perso-1': rev('2026-09-01') })), []);
   assert.deepEqual(sessionCounts(opts([], { 'perso-1': rev('2026-09-01') })), { due: 0, newAvailable: 0 });
 });
+test('buildSession : les mots perso passent avant la liste de base', () => {
+  const words = [w(id(1)), w(id(2)), w('perso-1790000000001'), w('perso-1790000000000')];
+  assert.deepEqual(buildSession(opts(words, {})),
+    ['perso-1790000000000', 'perso-1790000000001', id(1), id(2)]);
+});
 test('sessionCounts ne plafonne pas les mots dus', () => {
   const words = Array.from({ length: 30 }, (_, i) => w(id(i + 1)));
   const progress = Object.fromEntries(words.slice(0, 25).map(x => [x.id, rev(T)]));

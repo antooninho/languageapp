@@ -1,6 +1,6 @@
 // Seul module qui lit et écrit le stockage local. Le backend est injectable pour les tests.
 import { todayISO, addDays, daysBetween } from './dates.js';
-import { validateBackup } from './validate.js';
+import { validateBackup, cleanMeta } from './validate.js';
 
 const PREFIX = 'ru-app:';
 const DEFAULT_SETTINGS = { newPerDay: 10, autoAudio: true };
@@ -42,7 +42,7 @@ export function createStorage(backend = globalThis.localStorage) {
   }
 
   function getMeta() {
-    return { ...DEFAULT_META, ...read('meta', {}) };
+    return { ...DEFAULT_META, ...cleanMeta(read('meta', {})) };
   }
   const updateMeta = changes => write('meta', { ...getMeta(), ...changes });
 
@@ -154,8 +154,12 @@ export function createStorage(backend = globalThis.localStorage) {
       return m.lastSessionDate !== null && (m.lastExport === null || daysBetween(m.lastExport, today) > 7);
     },
 
-    exportData(now = new Date()) {
+    // À appeler seulement quand le fichier a vraiment été partagé ou téléchargé.
+    markExported(now = new Date()) {
       updateMeta({ lastExport: todayISO(now) });
+    },
+
+    exportData(now = new Date()) {
       return {
         version: 1,
         exportedAt: now.toISOString(),

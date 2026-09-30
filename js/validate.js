@@ -26,6 +26,29 @@ export function isValidProgress(p) {
     && typeof p.ease === 'number' && p.ease >= 1.3 && p.ease <= 3;
 }
 
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const isDateOrNull = v => v === null || (typeof v === 'string' && DATE_RE.test(v));
+const META_FIELDS = {
+  lastExport: isDateOrNull,
+  lastSessionDate: isDateOrNull,
+  newIntroducedDate: isDateOrNull,
+  streak: isCount,
+  newIntroducedToday: isCount,
+  voiceHelpShown: v => typeof v === 'boolean',
+};
+
+export function isValidMeta(m) {
+  return isPlainObject(m) && Object.entries(META_FIELDS).every(([key, ok]) => m[key] === undefined || ok(m[key]));
+}
+
+// Ne garde que les champs de meta connus et correctement typés.
+export function cleanMeta(m) {
+  if (!isPlainObject(m)) return {};
+  return Object.fromEntries(Object.entries(META_FIELDS)
+    .filter(([key, ok]) => m[key] !== undefined && ok(m[key]))
+    .map(([key]) => [key, m[key]]));
+}
+
 export function validateBackup(data) {
   const fail = error => ({ ok: false, error });
   if (!isPlainObject(data)) return fail("Ce fichier n'est pas une sauvegarde de l'appli.");
@@ -45,6 +68,6 @@ export function validateBackup(data) {
       || typeof s.autoAudio !== 'boolean') {
     return fail('Réglages invalides.');
   }
-  if (!isPlainObject(data.meta)) return fail('Métadonnées invalides.');
+  if (!isValidMeta(data.meta)) return fail('Métadonnées invalides.');
   return { ok: true };
 }
