@@ -1,10 +1,11 @@
 """API du serveur : connexion par cookie de session et données de l'appli."""
+import datetime
 import json
 import time
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, Request, Response
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from server import db
@@ -138,4 +139,46 @@ def create_app(db_path: str, dev: bool = False, trust_proxy: bool = False, now=t
     def me(user=Depends(current_user)):
         return {"username": user["username"]}
 
+    @app.get("/api/data")
+    def get_data(user=Depends(current_user), conn=Depends(get_conn)):
+        return {"items": db.get_all_data(conn, user["id"])}
+
+    @app.put("/api/data/{key}")
+    async def put_data(key: str, request: Request, user=Depends(current_user), conn=Depends(get_conn)):
+        if key not in SYNC_KEYS:
+            raise ApiError(404, "unknown_key")
+        data = await read_json(request)
+        if not isinstance(data, dict) or not isinstance(data.get("value"), (dict, list)):
+            raise ApiError(400, "bad_request")
+        version = data.get("version")
+        if version is not None and (not isinstance(version, int) or isinstance(version, bool)):
+            raise ApiError(400, "bad_request")
+        try:
+            new_version = db.put_data(conn, user["id"], key, data["value"], version,
+                                      datetime.datetime.now().isoformat(timespec="seconds"))
+        except db.Conflict as conflict:
+            raise ApiError(409, "conflict", current=conflict.current)
+        return {"version": new_version}
+
+    if dev:
+        # En développement seulement : le serveur sert aussi l'appli (en production, c'est Caddy).
+        @app.get("/{path:path}")
+        def static_file(path: str):
+            target = public_file(root_dir, path)
+            if target is None:
+                raise ApiError(404, "not_found")
+            return FileResponse(target, headers={"Cache-Control": "no-cache"})
+
     return app
+
+
+def public_file(root_dir: Path, path: str) -> Path | None:
+    """Le fichier public correspondant à `path`, ou None s'il n'est pas autorisé ou n'existe pas."""
+    url = "/" + path
+    if ".." in path.split("/") or not (url in PUBLIC_FILES or any(url.startswith(d) for d in PUBLIC_DIRS)):
+        return None
+    root = root_dir.resolve()
+    target = (root / ("index.html" if url == "/" else path)).resolve()
+    relative = "/" + target.relative_to(root).as_posix() if target.is_relative_to(root) else None
+    allowed = relative is not None and (relative in PUBLIC_FILES or any(relative.startswith(d) for d in PUBLIC_DIRS))
+    return target if allowed and target.is_file() else None
