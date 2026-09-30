@@ -5,6 +5,7 @@ import { createRemoteBackend } from './remote-backend.js';
 import { todayISO } from './dates.js';
 import * as speech from './speech.js';
 import { h, clear } from './ui/dom.js';
+import { ruWord } from './ui/ru-word.js';
 import { renderLogin } from './ui/login-screen.js';
 import { renderHome } from './ui/home.js';
 import { renderSession } from './ui/session-screen.js';
@@ -125,7 +126,7 @@ async function start() {
     current = { name: 'unreachable', day: null };
     clear(root);
     root.append(h('section', { class: 'screen' },
-      h('h1', {}, 'Russe'),
+      h('h1', {}, ruWord('ру́сский', { className: 'masthead' })),
       h('p', { class: 'error' }, 'Impossible de joindre le serveur.'),
       h('p', { class: 'muted' }, 'Vérifie ta connexion internet, puis réessaie.'),
       h('div', { class: 'spacer' }),
@@ -179,7 +180,7 @@ async function start() {
       items: response.body.items,
       api,
       onStatus: status => setBanner(status === 'offline'
-        ? 'Connexion perdue — tes dernières réponses ne sont pas encore enregistrées.'
+        ? 'Connexion perdue : tes dernières réponses ne sont pas encore enregistrées.'
         : null),
       onConflict: () => refresh(CHANGED_ELSEWHERE),
       onUnauthorized: () => showLogin('Ta session a expiré, reconnecte-toi.'),

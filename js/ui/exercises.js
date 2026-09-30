@@ -1,13 +1,16 @@
 // Rendu des six types d'exercices. Chaque exercice appelle onDone(note) quand il est terminé
 // (sans note pour la carte découverte).
-import { h, clear } from './dom.js';
+import { h, clear, icon } from './dom.js';
+import { ruWord } from './ru-word.js';
 import { shuffle } from '../session.js';
 import { checkTyped } from '../answers.js';
 
 const GENRES = { m: 'masculin', f: 'féminin', n: 'neutre' };
 const GRADES = [['again', 'Raté'], ['hard', 'Difficile'], ['good', 'Bien'], ['easy', 'Facile']];
 
+// Nature du mot ; rien pour les mots-outils (« autre »), où l'étiquette n'apprendrait rien.
 export function kindLabel(word) {
+  if (word.type === 'autre') return '';
   return word.type === 'nom' && word.genre ? `nom ${GENRES[word.genre]}` : word.type;
 }
 
@@ -15,18 +18,20 @@ const frText = word => word.fr.join(' / ');
 
 function audioButton(word, speech) {
   if (!speech.hasRussianVoice()) return null;
-  return h('button', { class: 'icon-btn', 'aria-label': 'Écouter', onclick: () => speech.speak(word.ru) }, '🔊');
+  return h('button', { class: 'icon-btn', 'aria-label': 'Écouter', onclick: () => speech.speak(word.ru) }, icon('speaker'));
 }
 
-const ruBlock = (word, speech) =>
-  [h('div', { class: 'ru', lang: 'ru' }, word.ru), audioButton(word, speech)].filter(Boolean);
-const frBlock = word => h('div', { class: 'fr' }, frText(word));
-const kindBlock = word => h('div', { class: 'kind' }, kindLabel(word));
+// Le mot russe en grand (accent tracé au stylo rouge) et le bouton d'écoute.
+const ruBlock = (word, speech, animate = true) =>
+  h('div', { class: 'word-line' }, ruWord(word.ru, { className: 'word', animate }), audioButton(word, speech));
+const translation = word => h('div', { class: 'fr' }, frText(word));
+const question = word => h('div', { class: 'question' }, frText(word));
+const kindBlock = word => (kindLabel(word) ? h('div', { class: 'kind' }, kindLabel(word)) : null);
 
 function discovery(root, { word, speech, autoAudio, onDone }) {
   root.append(
-    h('p', { class: 'kind' }, 'Nouveau mot'),
-    h('div', { class: 'card prompt' }, ...ruBlock(word, speech), frBlock(word), kindBlock(word)),
+    h('p', { class: 'note' }, 'Nouveau mot'),
+    h('div', { class: 'prompt' }, ruBlock(word, speech), translation(word), kindBlock(word)),
     h('div', { class: 'spacer' }),
     h('button', { class: 'btn btn-primary btn-big', onclick: () => onDone() }, 'Continuer'));
   if (autoAudio) speech.speak(word.ru);
@@ -34,12 +39,12 @@ function discovery(root, { word, speech, autoAudio, onDone }) {
 
 // Carte recto/verso générique : front et back sont des tableaux d'éléments.
 function flashcard(root, { front, back, onReveal, onDone }) {
-  const card = h('div', { class: 'card prompt' }, ...front);
+  const card = h('div', { class: 'prompt' }, front);
   const actions = h('div', {},
     h('button', {
       class: 'btn btn-primary btn-big',
       onclick: () => {
-        card.append(h('hr', { style: 'width:100%;border:0;border-top:1px solid var(--border)' }), ...back);
+        card.append(h('hr', { class: 'rule' }), ...back.filter(Boolean));
         clear(actions);
         actions.append(h('div', { class: 'grade-buttons' },
           GRADES.map(([rating, label]) => h('button', { class: 'btn', onclick: () => onDone(rating) }, label))));
@@ -50,20 +55,20 @@ function flashcard(root, { front, back, onReveal, onDone }) {
 }
 
 function flashRuFr(root, { word, speech, autoAudio, onDone }) {
-  flashcard(root, { front: ruBlock(word, speech), back: [frBlock(word), kindBlock(word)], onDone });
+  flashcard(root, { front: [ruBlock(word, speech)], back: [translation(word), kindBlock(word)], onDone });
   if (autoAudio) speech.speak(word.ru);
 }
 
 function flashFrRu(root, { word, speech, autoAudio, onDone }) {
   flashcard(root, {
-    front: [frBlock(word), kindBlock(word)],
-    back: ruBlock(word, speech),
+    front: [question(word), kindBlock(word)],
+    back: [ruBlock(word, speech)],
     onReveal: () => { if (autoAudio) speech.speak(word.ru); },
     onDone,
   });
 }
 
-// QCM générique : options = [{ label, correct, lang? }].
+// QCM générique : options = [{ label, correct, lang? }]. Après la réponse, la marge porte la correction.
 function mcq(root, { prompt, options, onAnswered, onDone }) {
   const buttons = options.map(option => h('button', {
     class: 'btn',
@@ -88,15 +93,15 @@ function mcqRuFr(root, { word, distractors, speech, autoAudio, onDone }) {
     { label: word.fr[0], correct: true },
     ...distractors.map(d => ({ label: d.fr[0], correct: false })),
   ], Math.random);
-  mcq(root, { prompt: h('div', { class: 'card prompt' }, ...ruBlock(word, speech)), options, onDone });
+  mcq(root, { prompt: h('div', { class: 'prompt' }, ruBlock(word, speech)), options, onDone });
   if (autoAudio) speech.speak(word.ru);
 }
 
 function mcqFrRu(root, { word, distractors, speech, autoAudio, onDone }) {
-  const prompt = h('div', { class: 'card prompt' }, frBlock(word), kindBlock(word));
+  const prompt = h('div', { class: 'prompt' }, question(word), kindBlock(word));
   const options = shuffle([
-    { label: word.ru, correct: true, lang: 'ru' },
-    ...distractors.map(d => ({ label: d.ru, correct: false, lang: 'ru' })),
+    { label: ruWord(word.ru), correct: true, lang: 'ru' },
+    ...distractors.map(d => ({ label: ruWord(d.ru), correct: false, lang: 'ru' })),
   ], Math.random);
   mcq(root, {
     prompt, options, onDone,
@@ -113,8 +118,9 @@ function typed(root, { word, speech, autoAudio, onDone }) {
     class: 'typed-input', lang: 'ru', autocapitalize: 'off', autocorrect: 'off', autocomplete: 'off',
     spellcheck: 'false', placeholder: 'En russe…', 'aria-label': 'Ta réponse en russe',
   });
+  const answerLine = h('div', { class: 'answer-line' }, input);
   const submit = h('button', { class: 'btn btn-primary btn-big', type: 'submit' }, 'Valider');
-  const feedback = h('div', { class: 'card prompt', hidden: true });
+  const feedback = h('div', { class: 'prompt', hidden: true });
   const form = h('form', {
     class: 'exercise',
     onsubmit: event => {
@@ -122,18 +128,20 @@ function typed(root, { word, speech, autoAudio, onDone }) {
       if (input.disabled) return;
       const result = checkTyped(input.value, word.ru);
       input.disabled = true;
+      input.classList.add(result === 'exact' ? 'correct' : result);
+      if (result !== 'almost') answerLine.classList.add(result === 'exact' ? 'mark-correct' : 'mark-wrong');
       const message = result === 'exact' ? ['correct', 'Bravo !']
-        : result === 'almost' ? ['almost', 'Presque :']
-        : ['wrong', 'Réponse :'];
-      feedback.append(h('p', { class: `feedback ${message[0]}` }, message[1]), ...ruBlock(word, speech));
+        : result === 'almost' ? ['almost', 'Presque, la bonne orthographe :']
+        : ['wrong', 'La bonne réponse :'];
+      feedback.append(h('p', { class: `feedback ${message[0]}` }, message[1]), ruBlock(word, speech));
       feedback.hidden = false;
       if (autoAudio) speech.speak(word.ru);
       const rating = result === 'exact' ? 'good' : result === 'almost' ? 'hard' : 'again';
       submit.replaceWith(h('button', { class: 'btn btn-primary btn-big', type: 'button', onclick: () => onDone(rating) }, 'Suivant'));
     },
   },
-  h('div', { class: 'card prompt' }, frBlock(word), kindBlock(word)),
-  input,
+  h('div', { class: 'prompt' }, question(word), kindBlock(word)),
+  answerLine,
   feedback,
   h('div', { class: 'spacer' }),
   submit);

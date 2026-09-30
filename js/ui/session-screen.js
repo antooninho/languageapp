@@ -1,5 +1,5 @@
 // Déroulement d'une session : un exercice à la fois, puis un résumé.
-import { h, clear } from './dom.js';
+import { h, clear, icon } from './dom.js';
 import { renderExercise } from './exercises.js';
 import {
   buildSession, sessionCounts, pickExercise, stageOf, pickDistractors,
@@ -18,6 +18,7 @@ export function renderSession(root, ctx) {
   let words = [];
   let byId = new Map();
   let run = createRun([]);
+  let results = []; // note de chaque réponse, dans l'ordre (pour les carreaux)
   let activityRecorded = false;
 
   const sessionParams = () => ({
@@ -32,14 +33,23 @@ export function renderSession(root, ctx) {
     words = storage.getEffectiveWords(ctx.baseWords);
     byId = new Map(words.map(w => [w.id, w]));
     run = createRun(buildSession(sessionParams()));
+    results = [];
     step();
   }
 
+  // Un carreau par carte : plein à l'encre une fois répondu, en rouge si raté.
+  function squares() {
+    return h('div', { class: 'squares', role: 'img', 'aria-label': `${run.answered} ${plural(run.answered, 'carte', 'cartes')} sur ${run.total}` },
+      Array.from({ length: run.total }, (_, i) => {
+        const state = i >= results.length ? '' : results[i] === 'again' ? ' missed' : ' done';
+        return h('span', { class: `sq${state}` });
+      }));
+  }
+
   function header() {
-    const percent = run.total ? Math.round((run.answered / run.total) * 100) : 0;
     return h('div', { class: 'session-top' },
-      h('button', { class: 'icon-btn', 'aria-label': 'Quitter la session', onclick: () => ctx.navigate('home') }, '✕'),
-      h('div', { class: 'progress' }, h('div', { style: `width:${percent}%` })));
+      h('button', { class: 'icon-btn', 'aria-label': 'Quitter la session', onclick: () => ctx.navigate('home') }, icon('close')),
+      squares());
   }
 
   function show(type, word, onDone) {
@@ -78,6 +88,7 @@ export function renderSession(root, ctx) {
       }
     }
     run = recordAnswer(run, rating);
+    results.push(rating);
     step();
   }
 
@@ -87,9 +98,10 @@ export function renderSession(root, ctx) {
     clear(container);
     container.append(...[
       h('h1', {}, 'Session terminée'),
-      h('div', { class: 'card' },
+      squares(),
+      h('div', {},
         h('p', { class: 'fr' }, `${reviewed} ${plural(reviewed, 'mot revu', 'mots revus')}`),
-        h('p', { class: 'muted' }, `${failed} ${plural(failed, 'raté', 'ratés')}`)),
+        h('p', { class: 'muted' }, failed === 0 ? 'Aucun raté.' : `${failed} ${plural(failed, 'raté', 'ratés')}, revu${plural(failed, '', 's')} en fin de session.`)),
       h('div', { class: 'spacer' }),
       due + newAvailable > 0 && h('button', { class: 'btn btn-primary btn-big', onclick: start }, 'Continuer'),
       h('button', { class: 'btn', onclick: () => ctx.navigate('home') }, 'Accueil'),

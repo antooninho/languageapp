@@ -29,3 +29,8 @@ export function h(tag, attrs = {}, ...children) {
 export function clear(el) {
   el.replaceChildren();
 }
+
+// Icône dessinée en CSS (speaker, close, back) ; décorative, le bouton porte son aria-label.
+export function icon(name) {
+  return h('span', { class: `icon icon-${name}`, 'aria-hidden': 'true' });
+}

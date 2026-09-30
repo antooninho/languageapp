@@ -1,5 +1,5 @@
 // Formulaire d'ajout ou de modification d'un mot.
-import { h, clear } from './dom.js';
+import { h, clear, icon } from './dom.js';
 import { stripStress, vowelIndexes, stressedIndexes, toggleStress } from '../stress.js';
 import { TYPES, isValidWord } from '../validate.js';
 
@@ -25,11 +25,11 @@ export function renderWordForm(root, ctx, params = {}) {
       picker.append(vowels.has(i)
         ? h('button', {
           type: 'button',
-          class: stressed.has(i) ? 'stressed' : null,
           'aria-label': `Accent sur ${ch}`,
+          'aria-pressed': stressed.has(i) ? 'true' : 'false',
           onclick: () => { ru = toggleStress(ru, i); renderPicker(); },
-        }, ch)
-        : h('span', {}, ch === ' ' ? ' ' : ch));
+        }, h('span', { class: stressed.has(i) ? 'stress' : null }, ch))
+        : h('span', { class: 'letter' }, ch === ' ' ? ' ' : ch));
     });
   }
 
@@ -103,7 +103,7 @@ export function renderWordForm(root, ctx, params = {}) {
 
   root.append(h('section', { class: 'screen', oninput: () => { message.hidden = true; } },
     h('div', { class: 'session-top' },
-      h('button', { class: 'icon-btn', 'aria-label': 'Retour', onclick: () => ctx.navigate('words') }, '←'),
+      h('button', { class: 'icon-btn', 'aria-label': 'Retour', onclick: () => ctx.navigate('words') }, icon('back')),
       h('h2', {}, existing ? 'Modifier le mot' : 'Nouveau mot')),
     h('label', {}, 'Russe', ruInput),
     h('div', {}, h('p', { class: 'muted' }, 'Touche la voyelle accentuée :'), picker),

@@ -1,5 +1,5 @@
 // Réglages : nouveaux mots par jour, audio automatique, export et import des données.
-import { h } from './dom.js';
+import { h, icon } from './dom.js';
 import { todayISO } from '../dates.js';
 import { validateBackup } from '../validate.js';
 
@@ -93,7 +93,7 @@ export function renderSettings(root, ctx) {
 
   root.append(h('section', { class: 'screen' },
     h('div', { class: 'session-top' },
-      h('button', { class: 'icon-btn', 'aria-label': 'Retour', onclick: () => ctx.navigate('home') }, '←'),
+      h('button', { class: 'icon-btn', 'aria-label': 'Retour', onclick: () => ctx.navigate('home') }, icon('back')),
       h('h2', {}, 'Réglages')),
     h('div', { class: 'card', style: 'display:flex;flex-direction:column;gap:12px' },
       h('p', { class: 'muted' }, `Connecté en tant que ${ctx.username}`),
@@ -114,7 +114,7 @@ export function renderSettings(root, ctx) {
     h('div', { class: 'card', style: 'display:flex;flex-direction:column;gap:12px' },
       h('h2', {}, 'Sauvegarde'),
       h('p', { class: 'muted' }, 'Tes données sont enregistrées sur ton serveur. Tu peux aussi exporter une copie.'),
-      h('button', { class: 'btn btn-primary', onclick: exportBackup }, 'Exporter une sauvegarde'),
+      h('button', { class: 'btn', onclick: exportBackup }, 'Exporter une sauvegarde'),
       h('button', { class: 'btn', onclick: () => fileInput.click() }, 'Importer une sauvegarde'),
       fileInput,
       message),

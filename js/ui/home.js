@@ -1,13 +1,38 @@
-// Écran d'accueil : compteurs du jour, série, bannières et accès aux autres écrans.
+// Écran d'accueil : le travail du jour, la semaine (comme dans le « дневник », le carnet de l'écolier russe),
+// les bandeaux d'information et l'accès aux autres écrans.
 import { h } from './dom.js';
+import { ruWord } from './ru-word.js';
 import { sessionCounts } from '../session.js';
+import { weekDays } from '../dates.js';
 
 const plural = (n, one, many) => (n > 1 ? many : one);
+const WEEKDAYS = [['Пн', 'lundi'], ['Вт', 'mardi'], ['Ср', 'mercredi'], ['Чт', 'jeudi'],
+  ['Пт', 'vendredi'], ['Сб', 'samedi'], ['Вс', 'dimanche']];
 
-function stat(value, label) {
-  return h('div', { class: 'stat' },
-    h('div', { class: 'stat-value' }, value),
-    h('div', { class: 'stat-label' }, label));
+// La semaine en cours : un carreau coché par jour révisé.
+function week(storage, today) {
+  const practiced = new Set(storage.getMeta().practiceDays);
+  return h('div', { class: 'week' },
+    weekDays(today).map((day, i) => {
+      const [short, name] = WEEKDAYS[i];
+      const done = practiced.has(day);
+      const classes = ['day', done && 'done', day === today && 'today', day > today && 'future'].filter(Boolean).join(' ');
+      return h('div', { class: classes, role: 'img', 'aria-label': `${name} : ${done ? 'révisé' : 'pas révisé'}` },
+        h('span', { class: 'day-name', lang: 'ru', 'aria-hidden': 'true' }, short),
+        h('span', { class: 'day-box', 'aria-hidden': 'true' }));
+    }));
+}
+
+function todayLines(due, newAvailable) {
+  if (due + newAvailable === 0) {
+    return [h('p', {}, 'Tout est à jour pour aujourd’hui.'),
+      h('p', { class: 'muted' }, 'Les prochains mots reviendront demain.')];
+  }
+  return [
+    h('p', {}, due === 0 ? 'Aucun mot à revoir' : `${due} ${plural(due, 'mot', 'mots')} à revoir`),
+    h('p', {}, newAvailable === 0 ? 'Aucun nouveau mot'
+      : `${newAvailable} ${plural(newAvailable, 'nouveau mot', 'nouveaux mots')}`),
+  ];
 }
 
 function banners(ctx) {
@@ -48,14 +73,14 @@ export function renderHome(root, ctx) {
 
   root.append(h('section', { class: 'screen' },
     h('header', {},
-      h('h1', {}, 'Russe'),
-      h('p', { class: 'subtitle' }, 'Révisions du jour')),
+      h('h1', {}, ruWord('ру́сский', { className: 'masthead', animate: true })),
+      h('p', { class: 'subtitle' }, 'Tes révisions de russe')),
     banners(ctx),
-    h('div', { class: 'stats' },
-      stat(due, `${plural(due, 'mot', 'mots')} à réviser`),
-      stat(newAvailable, `${plural(newAvailable, 'nouveau disponible', 'nouveaux disponibles')}`)),
-    streak > 0 && h('p', { class: 'streak' }, `🔥 ${streak} ${plural(streak, 'jour', 'jours')} d'affilée`),
-    nothingToDo && h('p', { class: 'muted' }, "Rien à réviser aujourd'hui 🎉"),
+    h('div', { class: 'today' }, todayLines(due, newAvailable)),
+    h('div', {},
+      week(storage, today),
+      h('p', { class: 'streak' }, streak > 0 ? `${streak} ${plural(streak, 'jour', 'jours')} de suite`
+        : 'Révise aujourd’hui pour lancer ta série.')),
     h('div', { class: 'spacer' }),
     h('button', {
       class: 'btn btn-primary btn-big',

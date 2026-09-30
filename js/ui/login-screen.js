@@ -1,5 +1,6 @@
 // Page de connexion. Les attributs autocomplete permettent à l'iPhone d'enregistrer le mot de passe.
 import { h } from './dom.js';
+import { ruWord } from './ru-word.js';
 
 function errorMessage(response) {
   if (response.status === 401) return 'Identifiant ou mot de passe incorrect.';
@@ -41,7 +42,7 @@ export function renderLogin(root, { api, message, onLoggedIn }) {
     },
   },
   h('header', {},
-    h('h1', {}, 'Russe'),
+    h('h1', {}, ruWord('ру́сский', { className: 'masthead', animate: true })),
     h('p', { class: 'subtitle' }, 'Connecte-toi pour réviser')),
   message && h('div', { class: 'banner' }, message),
   h('label', {}, 'Identifiant', username),

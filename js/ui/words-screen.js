@@ -1,5 +1,6 @@
 // Liste « Mes mots » : recherche, filtre base/perso, accès au formulaire.
-import { h, clear } from './dom.js';
+import { h, clear, icon } from './dom.js';
+import { ruWord } from './ru-word.js';
 import { normalize } from '../answers.js';
 
 const MAX_ROWS = 100;
@@ -39,17 +40,17 @@ export function renderWords(root, ctx) {
     clear(list);
     list.append(...matches.slice(0, MAX_ROWS).map(w => h('li', {},
       h('button', { class: 'btn word-row', onclick: () => ctx.navigate('word-form', { id: w.id }) },
-        h('span', { class: 'w-ru', lang: 'ru' }, w.ru),
+        ruWord(w.ru, { className: 'w-ru' }),
         storage.isOverridden(w.id) && h('span', { class: 'badge' }, 'modifié'),
         h('span', { class: 'w-fr' }, w.fr[0])))));
     info.textContent = matches.length > MAX_ROWS
-      ? `${matches.length} mots — affine ta recherche pour voir les autres.`
+      ? `${matches.length} mots. Affine ta recherche pour voir les autres.`
       : `${matches.length} ${matches.length > 1 ? 'mots' : 'mot'}`;
   }
 
   root.append(h('section', { class: 'screen' },
     h('div', { class: 'session-top' },
-      h('button', { class: 'icon-btn', 'aria-label': 'Retour', onclick: () => ctx.navigate('home') }, '←'),
+      h('button', { class: 'icon-btn', 'aria-label': 'Retour', onclick: () => ctx.navigate('home') }, icon('back')),
       h('h2', {}, 'Mes mots')),
     h('button', { class: 'btn btn-primary', onclick: () => ctx.navigate('word-form', {}) }, '+ Ajouter un mot'),
     search,
