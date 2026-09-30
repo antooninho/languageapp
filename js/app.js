@@ -50,6 +50,10 @@ async function start() {
     },
   };
   ctx.navigate('home');
+
+  // Hors ligne et conservation des données.
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
+  navigator.storage?.persist?.();
 }
 
 start();
