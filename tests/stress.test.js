@@ -1,6 +1,19 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { stripStress, vowelIndexes, setStress, stressedIndex } from '../js/stress.js';
+import { stripStress, vowelIndexes, setStress, stressedIndex, stressedIndexes, toggleStress } from '../js/stress.js';
+
+test('stressedIndexes', () => {
+  assert.deepEqual(stressedIndexes('до́брый ве́чер'), [1, 8]);
+  assert.deepEqual(stressedIndexes('молоко'), []);
+});
+test('toggleStress place, déplace et retire l\'accent dans un seul mot', () => {
+  assert.equal(toggleStress('молоко', 5), 'молоко́');
+  assert.equal(toggleStress('молоко́', 5), 'молоко');
+  assert.equal(toggleStress('мо́локо', 5), 'молоко́');
+  assert.equal(toggleStress('до́брый вечер', 8), 'до́брый ве́чер');
+  assert.equal(toggleStress('до́брый ве́чер', 10), 'до́брый вече́р');
+  assert.throws(() => toggleStress('молоко', 0), RangeError);
+});
 
 test('stripStress', () => { assert.equal(stripStress('молоко́'), 'молоко'); });
 test('vowelIndexes', () => {

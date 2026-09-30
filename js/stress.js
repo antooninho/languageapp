@@ -22,6 +22,34 @@ export function setStress(word, index) {
 }
 
 export function stressedIndex(word) {
-  const pos = word.indexOf(STRESS);
-  return pos === -1 ? -1 : [...word.slice(0, pos)].length - 1;
+  return stressedIndexes(word)[0] ?? -1;
+}
+
+// Positions (dans le mot sans accent) de toutes les voyelles accentuées.
+export function stressedIndexes(word) {
+  const indexes = [];
+  let i = -1;
+  for (const ch of word) {
+    if (ch === STRESS) indexes.push(i);
+    else i++;
+  }
+  return indexes;
+}
+
+// Place l'accent sur la voyelle `index` (ou le retire s'il y est déjà),
+// sans toucher aux accents des autres mots d'une expression.
+export function toggleStress(word, index) {
+  const letters = [...stripStress(word)];
+  if (!VOWELS.includes(letters[index] ?? '')) throw new RangeError(`Pas de voyelle à la position ${index}`);
+  const stressed = new Set(stressedIndexes(word));
+  if (stressed.has(index)) {
+    stressed.delete(index);
+  } else {
+    let start = index, end = index;
+    while (start > 0 && letters[start - 1] !== ' ') start--;
+    while (end < letters.length && letters[end] !== ' ') end++;
+    for (const s of [...stressed]) if (s >= start && s < end) stressed.delete(s);
+    stressed.add(index);
+  }
+  return letters.map((ch, i) => (stressed.has(i) ? ch + STRESS : ch)).join('');
 }

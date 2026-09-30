@@ -5,10 +5,14 @@ import * as speech from './speech.js';
 import { h, clear } from './ui/dom.js';
 import { renderHome } from './ui/home.js';
 import { renderSession } from './ui/session-screen.js';
+import { renderWords } from './ui/words-screen.js';
+import { renderWordForm } from './ui/word-form.js';
 
 const screens = {
   home: renderHome,
   session: renderSession,
+  words: renderWords,
+  'word-form': renderWordForm,
 };
 
 function renderPending(root, ctx) {
